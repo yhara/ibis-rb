@@ -10,4 +10,8 @@ task :run => :make do
   sh "./bin/ibis"
 end
   
+task :test => :make do
+  sh "rspec"
+end
 
+task :default => :test

@@ -1,3 +1,5 @@
+require 'ibis/parser'
+
 module Ibis
   def self.main
     p 1
