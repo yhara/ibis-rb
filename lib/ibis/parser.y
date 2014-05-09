@@ -105,7 +105,7 @@ rule
   Atom :
     _INT       { [:Const, val[0]] }
     | _STRING  { [:Const, val[0]] }
-    | IDENT    { [:Var, val[0]] }
+    | _IDENT   { [:Var, val[0]] }
     | TRUE_    { [:Const, true] }
     | FALSE_   { [:Const, false] }
     | LPAREN
@@ -128,15 +128,24 @@ require 'strscan'
   KEYWORDS_REXP = Regexp.new(KEYWORDS.map{|k| Regexp.quote(k)}.join("|"))
 
   SYMBOLS = {
-    "*"   => "STAR",
     "|"   => "VBAR",
+    ";"   => "SEMI",
     ";;"  => "DSEMI",
     ","   => "COMMA",
     "="   => "EQ",
     "("   => "LPAREN",
     ")"   => "RPAREN",
     "->"  => "ARROW",
+    "+"   => "PLUS",
     "-"   => "MINUS",
+    "*"   => "STAR",
+    "/"   => "SLASH",
+    "^"   => "HAT",
+    "<"   => "LT",
+    "<="  => "LE",
+    ">"   => "GT",
+    ">="  => "GE",
+    "<>"  => "NE",
   }
   SYMBOLS_REXP = Regexp.new(SYMBOLS.map{|k, v| Regexp.quote(k)}.join("|"))
 
@@ -155,12 +164,15 @@ require 'strscan'
         s = @s.scan_until(/"/)
         raise "unterminated string" if s.nil?
         yield [:_STRING, s.chop]
+      when (s = @s.scan(/[A-Za-z][0-9A-Za-z]*/))
+        yield [:_IDENT, s]
       when @s.scan(/\s+/)
         # skip
       else
         p "@s" => @s
         raise "Syntax Error"
       end
+      # TODO: comment (*(* *)*)
     end
     yield [false, '$']   # is optional from Racc 1.3.7
   end

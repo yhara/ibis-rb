@@ -9,6 +9,10 @@ describe Ibis::Parser do
     it "~-" do
       expect(@parser.parse("-9")).to eq([:App, "(~-)", [:Const, 9]])
     end
+
+    it "varref" do
+      expect(@parser.parse("foo")).to eq([:Var, "foo"])
+    end
   end
 
   context "Literal" do
