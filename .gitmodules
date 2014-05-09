@@ -1,0 +1,3 @@
+[submodule "ibis-js"]
+	path = ibis-js
+	url = https://github.com/takuto-h/ibis-js
