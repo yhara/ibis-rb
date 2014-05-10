@@ -8,8 +8,7 @@ require 'pattern-match'
 module Ibis
   class Inferer
     def self.infer(*args)
-      infer_(*args)
-      #polyInfer(*args)
+      return polyInfer(*args)
     end
 
     def self.polyInfer(*args)
@@ -31,9 +30,26 @@ module Ibis
           createAlphaEquivalent(typeSchema).bodyType
         }
 
-        with(_[:Abs, [:Var, name], [:Body, body]]) { TODO }
+        with(_[:Abs, _[:Var, varName], _[:Body, bodyExpr]]) {
+          paramType = Type::Var.new(nil)
 
-        with(_[:App])
+          newCtxt = Env.createLocal({}, ctxt)
+          newCtxt.add(varName, Type::TypeSchema.new([], paramType))
+
+          retType = infer_(newCtxt, env, variants, bodyExpr)
+          Type::Fun.new(paramType, retType)
+        }
+
+        with(_[:App, funExpr, argExpr]) {
+          funType = infer_(ctxt, env, variants, funExpr)
+          argType = infer_(ctxt, env, variants, argExpr)
+
+          retType = Type::Var.new(nil)
+          unify(funType, Type::Fun.new(argType, retType))
+
+          retType
+        }
+
         with(_[:Let])
         with(_[:LetRec])
         with(_[:LetTuple])
@@ -43,8 +59,45 @@ module Ibis
         with(_[:VariantDef])
         with(_[:Case])
 
-        with(_) { raise "no match" }
+        with(_) { raise "no match: #{expr.inspect}" }
       }
+    end
+
+    def self.unify(type1, type2)
+      return if type1.equal?(type2)
+      match([type1, type2]) do
+        with(_[var1 & Type::Var, var2 & Type::Var]) {
+          if var1.value
+            unify(var1.value, var2)
+          elsif var2.value
+            unify(var1, var2.value)
+          else
+            var1.value = var2
+          end
+        }
+        with(_[var & Type::Var, other]) {
+          if var.value
+            unify(var.value, other)
+          else
+            if other.occur?(var)
+              raise "unification error 2: #{type1.str} and #{type2.str}"
+            end
+            var.value = other
+          end
+        }
+        with(_[other, var & Type::Var]) {
+          unify(var, other)
+        }
+        with(_[fun1 & Type::Fun, fun2 & Type::Fun]) {
+          unify(fun1.paramType, fun2.paramType)
+          unify(fun1.retType, fun2.retType)
+        }
+        with(_[Type::Tuple, Type::Tuple]) { TODO }
+
+        with(_) {
+          raise "unification error 1: #{type1.str}(#{type1.class}) and #{type2.str}(#{type2.class})"
+        }
+      end
     end
 
     def self.createAlphaEquivalent(typeSchema)
@@ -56,6 +109,12 @@ module Ibis
       newBodyType = typeSchema.bodyType.subst(map)
       return Type::TypeSchema.new(newTypeVars, newBodyType)
     end
+
+    def self.createPolyType(type)
+      freeVars = []
+      unwrappedType = type.unwrapVar(freeVars)
+      return Type::TypeSchema.new(freeVars, unwrappedType)
+    end
   end
 
   class Eva
@@ -64,6 +123,16 @@ module Ibis
 
   class Type
     def subst(map)
+      self
+    end
+
+    def occur?(typeVar)
+      false
+    end
+
+    # Unwrap Var 
+    # Modifies freeVars
+    def unwrapVar(freeVars)
       self
     end
 
@@ -84,10 +153,20 @@ module Ibis
       def initialize(paramType, retType)
         @paramType, @retType = paramType, retType
       end
+      attr_reader :paramType, :retType
 
       def subst(map)
         Fun.new(@paramType.subst(map),
                 @retType.subst(map))
+      end
+
+      def occur?(typeVar)
+        @paramType.occur?(typeVar) || @retType.occur?(typeVar)
+      end
+
+      def unwrapVar(freeVars)
+        Fun.new(@paramType.unwrapVar(freeVars),
+                @retType.unwrapVar(freeVars))
       end
 
       def str
@@ -95,6 +174,8 @@ module Ibis
       end
     end
 
+    # Type variable
+    # Represents an unknown type when @value is nil.
     class Var < Type
       @@currentId = 0
       def initialize(value)
@@ -102,6 +183,7 @@ module Ibis
         @id = @@currentId
         @@currentId += 1
       end
+      attr_accessor :value
 
       def subst(map)
         if (found = map[self])
@@ -110,6 +192,26 @@ module Ibis
           @value.subst(map)
         else
           self
+        end
+      end
+
+      def occur?(typeVar)
+        if typeVar.equal?(self)
+          true
+        elsif @value
+          @value.occur?(typeVar)
+        else
+          false
+        end
+      end
+
+      def unwrapVar(freeVars)
+        if @value
+          return @value.unwrapVar(freeVars)
+        else
+          return self if freeVars.include?(self)
+          freeVars.push(self)
+          return self
         end
       end
 
@@ -126,13 +228,17 @@ module Ibis
       def collect(&block)
         Tuple.new(@typeArray.map(&block))
       end
-
-      def any?(&block)
-        @typeArray.any?(&block)
-      end
       
       def subst(map)
         collect{|x| subst(x, map)}
+      end
+
+      def occur?(typeVar)
+        @typeArray.any?{|x| x.occur?(typeVar)}
+      end
+
+      def unwrapVar(freeVars)
+        collect{|x| x.unwrapVar(freeVars)}
       end
 
       def str
@@ -151,7 +257,7 @@ module Ibis
       end
     end
 
-    class TypeSchema < Type  # not sure this is meant to be a subclass of Type
+    class TypeSchema
       def initialize(typeVars, bodyType)
         @typeVars, @bodyType = typeVars, bodyType
       end
@@ -161,10 +267,12 @@ module Ibis
         return @bodyType.str if @typeVars.length == 0
 
         # Supports up to 26 variables
-        pairs = @typeVars.zip("a".."z").map{|item, c|
+        map = @typeVars.zip("a".."z").map{|item, c|
           [item, "'#{c}"]
-        }
-        return bodyType.subst(Hash[pairs]).str
+        }.to_h
+        
+        x = @bodyType.subst(map)
+        "TS<#{(x.is_a?(::String) ? x : x.str)}"
       end
     end
   end
@@ -219,6 +327,14 @@ module Ibis
   end
 
   class Env
+    def self.createGlobal
+      new(:Global, {})
+    end
+
+    def self.createLocal(vars, outerEnv)
+      new(:Local, vars, outerEnv)
+    end
+
     def initialize(tag, vars={}, outerEnv=nil)
       @tag, @vars, @outerEnv = tag, vars, outerEnv
     end
@@ -248,12 +364,20 @@ module Ibis
       typeEnv.add("int", Type::INT)
       typeEnv.add("bool", Type::BOOL)
 
-      typeCtxt.add("(+)", binOpType(Type::INT, Type::INT, Type::INT))
-      valueEnv.add("(+)", Value::Subr.new{|lhs|
-        Value::Subr.new{|rhs|
-          Value::Int.new(lhs.intValue + rhs.intValue)
-        }
-      })
+      [
+        ["(+)", :+],
+        ["(-)", :-],
+        ["(*)", :*],
+        ["(/)", :/],
+        ["(mod)", :%],
+      ].each do |opName, opMethod|
+        typeCtxt.add(opName, binOpType(Type::INT, Type::INT, Type::INT))
+        valueEnv.add(opName, Value::Subr.new{|lhs|
+          Value::Subr.new{|rhs|
+            Value::Int.new(lhs.intValue.send(:opMethod, rhs.intValue))
+          }
+        })
+      end
 
       typeVar = Type::Var.new(nil)
       typeCtxt.add("show", Type::TypeSchema.new(
@@ -285,17 +409,23 @@ module Ibis
   end
 
   def self.main
-    src = "1 * 2"
+    src = "fun x -> x * 2"
     expr = Parser.new.parse(src)
 
-    pp expr: expr
+    puts "-- expr --"
+    pp expr
+    puts
 
     variants = Env.new(:Global)
     env = Env.default
     type = Inferer.infer(env[:typeCtxt], env[:typeEnv], variants, expr)
 
-    value = Eva.eval(env[:valueEnv], expr)
+    puts "-- inferred type --"
+    puts type.str
+    puts
 
-    pp expr: expr, type: type, value: value
+    #value = Eva.eval(env[:valueEnv], expr)
+    #puts "-- evaluated value --"
+    #pp value
   end
 end

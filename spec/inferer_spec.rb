@@ -51,12 +51,13 @@ module Ibis
     end
 
     context "abs" do
-      it "fun"
-#      do
-#        expect(@infer["fun x -> x * 2"]).to eq("(int -> int)")
-#      end
+      it "fun" do
+        expect(@infer["fun x -> x * 2"]).to eq("(int -> int)")
+      end
 
-      it "higher order"
+      it "higher order" do
+        expect(@infer["fun n -> fun m -> n + m"]).to eq("(int -> (int -> int))")
+      end
     end
 
     #context "app"

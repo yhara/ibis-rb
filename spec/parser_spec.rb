@@ -31,20 +31,20 @@ describe Ibis::Parser do
 
   context "Operator" do
     it "~-" do
-      expect(@parse["-9"]).to eq([:App, "(~-)", [:Const, 9]])
+      expect(@parse["-9"]).to eq([:App, [:Var, "(~-)"], [:Const, 9]])
     end
 
     it "binary operator" do
       expect(@parse["1 + 2"]).to eq(
-        [:App, [:App, "(+)", [:Const, 1]], [:Const, 2]])
+        [:App, [:App, [:Var, "(+)"], [:Const, 1]], [:Const, 2]])
       expect(@parse["1 - 2"]).to eq(
-        [:App, [:App, "(-)", [:Const, 1]], [:Const, 2]])
+        [:App, [:App, [:Var, "(-)"], [:Const, 1]], [:Const, 2]])
       expect(@parse["1 * 2"]).to eq(
-        [:App, [:App, "(*)", [:Const, 1]], [:Const, 2]])
+        [:App, [:App, [:Var, "(*)"], [:Const, 1]], [:Const, 2]])
       expect(@parse["1 / 2"]).to eq(
-        [:App, [:App, "(/)", [:Const, 1]], [:Const, 2]])
+        [:App, [:App, [:Var, "(/)"], [:Const, 1]], [:Const, 2]])
       expect(@parse["1 mod 2"]).to eq(
-        [:App, [:App, "(mod)", [:Const, 1]], [:Const, 2]])
+        [:App, [:App, [:Var, "(mod)"], [:Const, 1]], [:Const, 2]])
     end
   end
 

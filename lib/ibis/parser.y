@@ -88,23 +88,23 @@ rule
 
   AddExpr :
     MulExpr PLUS AddExpr
-      { [:App, [:App, "(+)", val[0]], val[2]] }
+      { [:App, [:App, [:Var, "(+)"], val[0]], val[2]] }
     | MulExpr MINUS AddExpr
-      { [:App, [:App, "(-)", val[0]], val[2]] }
+      { [:App, [:App, [:Var, "(-)"], val[0]], val[2]] }
     | MulExpr
 
   MulExpr :
     UnaryExpr STAR MulExpr
-      { [:App, [:App, "(*)", val[0]], val[2]] }
+      { [:App, [:App, [:Var, "(*)"], val[0]], val[2]] }
     | UnaryExpr SLASH MulExpr
-      { [:App, [:App, "(/)", val[0]], val[2]] }
+      { [:App, [:App, [:Var, "(/)"], val[0]], val[2]] }
     | UnaryExpr MOD_ MulExpr
-      { [:App, [:App, "(mod)", val[0]], val[2]] }
+      { [:App, [:App, [:Var, "(mod)"], val[0]], val[2]] }
     | UnaryExpr
 
   UnaryExpr :
     MINUS UnaryExpr
-      { [:App, "(~-)", val[1]] }
+      { [:App, [:Var, "(~-)"], val[1]] }
     | PrimExpr
 
   PrimExpr :
