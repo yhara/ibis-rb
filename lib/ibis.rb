@@ -19,10 +19,42 @@ module Ibis
 
     def self.infer_(ctxt, env, variants, expr)
       match(expr){
+        with(_[:Const, :unit]) { Type::UNIT } 
         with(_[:Const, Integer]) { Type::INT } 
+        with(_[:Const, String]) { Type::STRING } 
         with(_[:Const, Or(true, false)]) { Type::BOOL } 
+
+        with(_[:Var, varName]) {
+          typeSchema = ctxt.find(varName)
+          raise "undefined variable: #{varName}" unless typeSchema
+
+          createAlphaEquivalent(typeSchema).bodyType
+        }
+
+        with(_[:Abs, [:Var, name], [:Body, body]]) { TODO }
+
+        with(_[:App])
+        with(_[:Let])
+        with(_[:LetRec])
+        with(_[:LetTuple])
+        with(_[:If])
+        with(_[:Tuple])
+        with(_[:Seq])
+        with(_[:VariantDef])
+        with(_[:Case])
+
         with(_) { raise "no match" }
       }
+    end
+
+    def self.createAlphaEquivalent(typeSchema)
+      map = typeSchema.typeVars.map{|typeVar|
+        freshVar = Type::Var.new(nil)
+        [typeVar, freshVar]
+      }.to_h
+      newTypeVars = map.values
+      newBodyType = typeSchema.bodyType.subst(map)
+      return Type::TypeSchema.new(newTypeVars, newBodyType)
     end
   end
 

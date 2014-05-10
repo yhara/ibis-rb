@@ -57,7 +57,7 @@ rule
 
   Abs : 
     FUN_ IDENT ARROW SimpleExpr
-      { [:Abs, {var: [:Var, val[1]], body: val[3]}] }
+      { [:Abs, [:Var, val[1]], [:Body, val[3]]] }
 
   If : 
     IF_ SimpleExpr THEN_ SimpleExpr ELSE_ SimpleExpr
