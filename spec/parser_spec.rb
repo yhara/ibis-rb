@@ -5,16 +5,6 @@ describe Ibis::Parser do
     @parser = Ibis::Parser.new
   end
 
-  context "Expression" do
-    it "~-" do
-      expect(@parser.parse("-9")).to eq([:App, "(~-)", [:Const, 9]])
-    end
-
-    it "varref" do
-      expect(@parser.parse("foo")).to eq([:Var, "foo"])
-    end
-  end
-
   context "Literal" do
     it "int" do
       expect(@parser.parse("99")).to eq([:Const, 99])
@@ -32,4 +22,15 @@ describe Ibis::Parser do
       expect(@parser.parse("false")).to eq([:Const, false])
     end
   end
+
+  context "Expression" do
+    it "~-" do
+      expect(@parser.parse("-9")).to eq([:App, "(~-)", [:Const, 9]])
+    end
+
+    it "varref" do
+      expect(@parser.parse("foo")).to eq([:Var, "foo"])
+    end
+  end
+
 end
