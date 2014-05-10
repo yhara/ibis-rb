@@ -29,13 +29,33 @@ describe Ibis::Parser do
     # unit
   end
 
-  context "Expression" do
+  context "Operator" do
     it "~-" do
       expect(@parse["-9"]).to eq([:App, "(~-)", [:Const, 9]])
     end
 
+    it "binary operator" do
+      expect(@parse["1 + 2"]).to eq(
+        [:App, [:App, "(+)", [:Const, 1]], [:Const, 2]])
+      expect(@parse["1 - 2"]).to eq(
+        [:App, [:App, "(-)", [:Const, 1]], [:Const, 2]])
+      expect(@parse["1 * 2"]).to eq(
+        [:App, [:App, "(*)", [:Const, 1]], [:Const, 2]])
+      expect(@parse["1 / 2"]).to eq(
+        [:App, [:App, "(/)", [:Const, 1]], [:Const, 2]])
+      expect(@parse["1 mod 2"]).to eq(
+        [:App, [:App, "(mod)", [:Const, 1]], [:Const, 2]])
+    end
+  end
+
+  context "Expression" do
     it "varref" do
       expect(@parse["foo"]).to eq([:Var, "foo"])
+    end
+
+    it "abs" do
+      expect(@parse["fun x -> x"]).to eq([:Abs, [:Var, "x"],
+                                                [:Body, [:Var, "x"]]])
     end
 
     # let
@@ -43,7 +63,6 @@ describe Ibis::Parser do
     # let-rec
     # if
     # app
-    # binary expr
     # var def
     # type expr
     # paren

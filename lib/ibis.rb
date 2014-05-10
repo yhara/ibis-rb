@@ -285,8 +285,10 @@ module Ibis
   end
 
   def self.main
-    src = "1"
+    src = "1 * 2"
     expr = Parser.new.parse(src)
+
+    pp expr: expr
 
     variants = Env.new(:Global)
     env = Env.default

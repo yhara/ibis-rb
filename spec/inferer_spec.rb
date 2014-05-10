@@ -49,5 +49,30 @@ module Ibis
         expect(@infer["double"]).to eq("(int -> int)")
       end
     end
+
+    context "abs" do
+      it "fun"
+#      do
+#        expect(@infer["fun x -> x * 2"]).to eq("(int -> int)")
+#      end
+
+      it "higher order"
+    end
+
+    #context "app"
+    #context "let"
+    #context "let-rec"
+    #context "let-tuple"
+    #context "polymorphic"
+    #context "if"
+    #context "tuple"
+    #context "variant"
+    #context "constructor"
+    #context "case"
+    #context "case in func"
+    #context "recursive types"
+    #context "type expr"
+    #context "apply function n-times"
+    #context "compound expr"
   end
 end

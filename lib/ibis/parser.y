@@ -15,19 +15,19 @@ rule
     | Expr
 
   Let :
-    LET_ REC_ IDENT EQ Abs
+    LET_ REC_ _IDENT EQ Abs
       { [:LetRec, {var: val[2], expr: val[4]}] }
-    | LET_ LPAREN IDENT COMMA 
+    | LET_ LPAREN _IDENT COMMA 
     # TODO: parserLetTuple
-    | LET_ IDENT EQ SimpleExpr
+    | LET_ _IDENT EQ SimpleExpr
       { [:Let, {var: val[1], expr: val[3]}] }
 
   TypeDef :
-    TYPE IDENT EQ TypeCtors
+    TYPE _IDENT EQ TypeCtors
 
   TypeCtors :
-    IDENT OF_ TypeExpr VBAR TypeCtors
-    | IDENT OF_ TypeExpr
+    _IDENT OF_ TypeExpr VBAR TypeCtors
+    | _IDENT OF_ TypeExpr
 
   TypeExpr :
     TypeMulExpr ARROW TypeExpr
@@ -37,7 +37,7 @@ rule
     TypeAtom # TODO STAR 
   
   TypeAtom :
-    IDENT TypeVar
+    _IDENT TypeVar
       { [:TypeVar, val[1]] }
     | LPAREN TypeExpr RPAREN
       { val[1] }
@@ -56,7 +56,7 @@ rule
     | LogicExpr
 
   Abs : 
-    FUN_ IDENT ARROW SimpleExpr
+    FUN_ _IDENT ARROW SimpleExpr
       { [:Abs, [:Var, val[1]], [:Body, val[3]]] }
 
   If : 
@@ -70,9 +70,9 @@ rule
       { [:Case, {variant: val[1], clauses: val[3]}] }
 
   CaseClauses :
-    IDENT ARROW SimpleExpr VBAR CaseClauses
+    _IDENT ARROW SimpleExpr VBAR CaseClauses
       { val[4].merge({val[0] => val[2]}) }
-    | IDENT ARROW SimpleExpr
+    | _IDENT ARROW SimpleExpr
       { {val[0] => val[2]} }
 
   LogicExpr :
@@ -87,12 +87,20 @@ rule
     # TODO BinExpr
 
   AddExpr :
-    MulExpr
-    # TODO BinExpr
+    MulExpr PLUS AddExpr
+      { [:App, [:App, "(+)", val[0]], val[2]] }
+    | MulExpr MINUS AddExpr
+      { [:App, [:App, "(-)", val[0]], val[2]] }
+    | MulExpr
 
   MulExpr :
-    UnaryExpr
-    # TODO BinExpr
+    UnaryExpr STAR MulExpr
+      { [:App, [:App, "(*)", val[0]], val[2]] }
+    | UnaryExpr SLASH MulExpr
+      { [:App, [:App, "(/)", val[0]], val[2]] }
+    | UnaryExpr MOD_ MulExpr
+      { [:App, [:App, "(mod)", val[0]], val[2]] }
+    | UnaryExpr
 
   UnaryExpr :
     MINUS UnaryExpr
@@ -118,13 +126,14 @@ require 'strscan'
 ---- inner
 
   def parse(str)
+    @yydebug = ENV['DEBUG']
     @s = StringScanner.new(str)
     yyparse self, :scan
   end
 
   private
 
-  KEYWORDS = %w(let rec fun if case true false)
+  KEYWORDS = %w(let rec fun if case true false mod)
   KEYWORDS_REXP = Regexp.new(KEYWORDS.map{|k| Regexp.quote(k)}.join("|"))
 
   SYMBOLS = {
