@@ -108,7 +108,9 @@ rule
     | PrimExpr
 
   PrimExpr :
-    Atom
+    PrimExpr Atom
+      { [:App, val[0], val[1]] }
+    | Atom
 
   Atom :
     _INT       { [:Const, val[0]] }

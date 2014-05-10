@@ -60,7 +60,20 @@ module Ibis
       end
     end
 
-    #context "app"
+    context "app" do
+      it "fun" do
+        type = Type::Fun.new(Type::INT, Type::INT)
+        @env[:typeCtxt].add("double", Type::TypeSchema.new([], type))
+        expect(@infer["double 2"]).to eq("int")
+      end
+
+      it "op" do
+        expect(@infer["1 + 2 * 3"]).to eq("int")
+      end
+
+      #expect(@infer["(1 + 2) * 3"]).to eq("int")
+    end
+
     #context "let"
     #context "let-rec"
     #context "let-tuple"
