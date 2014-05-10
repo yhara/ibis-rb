@@ -257,6 +257,17 @@ module Ibis
       end
     end
 
+    # TODO: what is proper name for this?
+    class Tmp < Type
+      def initialize(c)
+        @c = c
+      end
+      
+      def str
+        "'#{@c}"
+      end
+    end
+
     class TypeSchema
       def initialize(typeVars, bodyType)
         @typeVars, @bodyType = typeVars, bodyType
@@ -268,11 +279,10 @@ module Ibis
 
         # Supports up to 26 variables
         map = @typeVars.zip("a".."z").map{|item, c|
-          [item, "'#{c}"]
+          [item, Tmp.new(c)]
         }.to_h
         
-        x = @bodyType.subst(map)
-        "TS<#{(x.is_a?(::String) ? x : x.str)}"
+        return @bodyType.subst(map).str
       end
     end
   end
@@ -409,7 +419,11 @@ module Ibis
   end
 
   def self.main
-    src = "fun x -> x * 2"
+    src = "fun x -> x"
+    puts "-- src --"
+    puts src
+    puts
+
     expr = Parser.new.parse(src)
 
     puts "-- expr --"
